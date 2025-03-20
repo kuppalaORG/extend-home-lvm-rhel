@@ -10,6 +10,11 @@
       register: partition_info
       changed_when: false
 
+    - name: Debug partition table output
+      debug:
+        var: partition_info.stdout
+
+
     - name: Ensure GPT is properly allocated (Fix GPT)
       shell: |
         echo -e "x\ne\nw\nY\n" | gdisk /dev/xvda
@@ -19,7 +24,7 @@
 
     - name: Debug GPT Fix output (Optional but helpful for logging)
       debug:
-        var: gpt_fix_result
+        var: gpt_fix_result.stdout
 
     - name: Fail if GPT Fix did not succeed
       fail:
@@ -28,23 +33,51 @@
 
     - name: Grow partition using growpart
       command: growpart /dev/xvda 4
+      register: growpart_result
+
+    - name: Debug growpart output
+      debug:
+        var: growpart_result.stdout
+
 
     - name: Resize the physical volume
       command: pvresize /dev/xvda4
+      register: pvresize_result
+
+    - name: Debug PV resize output
+      debug:
+        var: pvresize_result.stdout
+
 
     - name: Get available space in volume group
       command: vgdisplay RootVG
       register: vg_info
       changed_when: false
 
+    - name: Debug VG information
+      debug:
+        var: vg_info.stdout
+
+
     - name: Extend the /home logical volume
       command: lvextend -l +100%FREE /dev/RootVG/homeVol
       when: "'Free PE' in vg_info.stdout"
+      register: lvextend_result
+
+    - name: Debug extend logical volume output
+      debug:
+        var: lvextend_result.stdout
 
 
     - name: Resize filesystem (xfs)
       command: xfs_growfs /home
       when: "'xfs' in partition_info.stdout"
+      register: xfs_growfs_result
+
+    - name: Debug filesystem resize output
+      debug:
+        var: xfs_growfs_result.stdout
+
 
     - name: Verify new disk size
       command: df -h /home
