@@ -34,6 +34,7 @@
     - name: Grow partition using growpart
       command: growpart /dev/xvda 4
       register: growpart_result
+      ignore_errors: yes
 
     - name: Debug growpart output
       debug:
@@ -61,7 +62,7 @@
 
     - name: Extend the /home logical volume
       command: lvextend -l +100%FREE /dev/RootVG/homeVol
-      when: vg_info.stdout is search('Free PE') and vg_info.stdout is not search('Free PE / Size       0')
+#      when: vg_info.stdout is search('Free PE') and vg_info.stdout is not search('Free PE / Size       0')
       register: lvextend_result
 
     - name: Debug extend logical volume output
