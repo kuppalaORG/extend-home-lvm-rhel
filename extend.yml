@@ -14,7 +14,17 @@
       shell: |
         echo -e "x\ne\nw\nY\n" | gdisk /dev/xvda
       when: "'gpt' in partition_info.stdout"
-      ignore_errors: yes
+      register: gpt_fix_result
+      failed_when: gpt_fix_result.rc != 0
+
+    - name: Debug GPT Fix output (Optional but helpful for logging)
+      debug:
+        var: gpt_fix_result
+
+    - name: Fail if GPT Fix did not succeed
+      fail:
+        msg: "GPT fix failed. Stopping execution."
+      when: gpt_fix_result.failed
 
     - name: Grow partition using growpart
       command: growpart /dev/xvda 4
