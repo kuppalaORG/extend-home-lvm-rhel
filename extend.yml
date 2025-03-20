@@ -1,0 +1,45 @@
+---
+- name: Extend /home LVM Volume on RHEL/Amazon Linux
+  hosts: localhost
+  connection: local
+  become: yes
+  tasks:
+
+    - name: Check current partition table
+      command: parted /dev/xvda print
+      register: partition_info
+      changed_when: false
+
+    - name: Ensure GPT is properly allocated (Fix GPT)
+      shell: |
+        echo -e "x\ne\nw\nY\n" | gdisk /dev/xvda
+      when: "'gpt' in partition_info.stdout"
+      ignore_errors: yes
+
+    - name: Grow partition using growpart
+      command: growpart /dev/xvda 4
+
+    - name: Resize the physical volume
+      command: pvresize /dev/xvda4
+
+    - name: Get available space in volume group
+      command: vgdisplay RootVG
+      register: vg_info
+      changed_when: false
+
+    - name: Extend the /home logical volume
+      command: lvextend -l +100%FREE /dev/RootVG/homeVol
+      when: "'Free PE' in vg_info.stdout"
+
+
+    - name: Resize filesystem (xfs)
+      command: xfs_growfs /home
+      when: "'xfs' in partition_info.stdout"
+
+    - name: Verify new disk size
+      command: df -h /home
+      register: disk_info
+      changed_when: false
+
+    - debug:
+        msg: "{{ disk_info.stdout }}"
